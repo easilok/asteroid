@@ -87,6 +87,21 @@ async function updateNowPlaying() {
     }
 }
 
+async function updateTest() {
+    try {
+        const request = await fetch('/api/template/test')
+        const result = await request.text()
+
+        const template = document.getElementById("template-test")
+        if (!template) {
+            throw new Error("Could not find DOM element")
+        }
+        template.innerHTML = result
+    } catch (err) {
+        alert(err)
+    }
+}
+
 // Initialize stream quality display on page load
 window.addEventListener('DOMContentLoaded', function() {
     // Set initial quality display to match the selected stream
@@ -101,6 +116,7 @@ window.addEventListener('DOMContentLoaded', function() {
     }
     // Update playing information right after load
     updateNowPlaying();
+    updateTest()
 });
 
 // Update every 10 seconds

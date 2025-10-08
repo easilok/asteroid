@@ -31,6 +31,8 @@
         <p>Current listeners: <span data-text="listeners">0</span></p>
         <p>Stream quality: <span data-text="stream-quality">AAC 96kbps Stereo</span></p>
       </div>
+
+      <div id="template-test">oo</div>
       
       <div class="live-stream">
         <h2 style="color: #00ff00;">🟢 LIVE STREAM</h2>

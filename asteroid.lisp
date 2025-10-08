@@ -753,6 +753,13 @@
        `(("error" . ,(format nil "Icecast connection failed: ~a" e)))
        :status 500))))
 
+(define-api template/test () ()
+  (setf (radiance:header "Content-Type") "text/html")
+  (let ((template-path (merge-pathnames "template/test.chtml"
+                                        (asdf:system-source-directory :asteroid))))
+       (clip:process-to-string
+                      (plump:parse (alexandria:read-file-into-string template-path))
+                      :body "🎵 ASTEROID RADIO - User Management")))
 
 ;; RADIANCE server management functions
 
