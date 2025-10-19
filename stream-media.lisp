@@ -98,6 +98,7 @@
 
 (defun scan-music-library (&optional (directory *music-library-path*))
   "Scan music library directory and add tracks to database"
+  (format t "Starting music library scan on ~a~%" directory)
   (let ((audio-files (scan-directory-for-music-recursively directory))
         (added-count 0)
         (skipped-count 0))
