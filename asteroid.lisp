@@ -1306,6 +1306,8 @@
   "About Asteroid Radio"
   (clip:process-to-string
    (load-template "about")
+   :current-user (get-current-user)
+   :navbar (load-template "partial/navbar")
    :title "About - Asteroid Radio"))
 
 ;; About content (for frameset mode)
@@ -1314,6 +1316,8 @@
   (clip:process-to-string
    (load-template "about")
    :framesetp t
+   :current-user (get-current-user)
+   :navbar (load-template "partial/navbar")
    :title "About - Asteroid Radio"))
 
 (define-page-with-limit status-page #@"/status" (:limit-group "public")
