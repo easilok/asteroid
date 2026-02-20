@@ -222,20 +222,68 @@
           (catch (lambda (error)
                    ;; Silently fail
                    nil)))))
-     
      ;; Update now playing info from API
-     (defun update-now-playing ()
+     ;; (defun update-now-playing ()
+     ;;   (let ((mount (get-current-mount)))
+     ;;     (ps:chain
+     ;;      (fetch (+ "/api/asteroid/partial/now-playing2?mount=" mount))
+     ;;      (then (lambda (response)
+     ;;              (let ((content-type (ps:chain response headers (get "content-type"))))
+     ;;                (if (ps:chain content-type (includes "application/json"))
+     ;;                    (progn
+     ;;                      (alert "Received json now-playing")
+     ;;                      (ps:chain response (json)))
+     ;;                    (throw (ps:new (-error "Error connecting to stream")))))))
+     ;;      (then (lambda (data)
+     ;;              (unless (= (ps:@ data status) 200)
+     ;;                (throw (ps:new (-error "Error fetching now-playing information"))))
+     ;;              (let ((track-title-el (ps:chain document (get-element-by-id "current-track-title")))
+     ;;                    (listeners-el (ps:chain document (get-element-by-id "current-listeners")))
+     ;;                    (track-id-el (ps:chain document (get-element-by-id "track-id")))
+     ;;                    (favorite-count-el (ps:chain document (get-element-by-id "favorite-count-value")))
+     ;;                    )
+     ;;                )
+     ;;              (let ((now-playing-el (ps:chain document (get-element-by-id "now-playing"))))
+     ;;                (when now-playing-el
+     ;;                  ;; Get current title before updating
+     ;;                  (let ((old-title-el (ps:chain now-playing-el (query-selector "#current-track-title"))))
+     ;;                    (setf (ps:@ now-playing-el inner-h-t-m-l) data)
+     ;;                    ;; Get new title after updating
+     ;;                    (let ((new-title-el (ps:chain now-playing-el (query-selector "#current-track-title"))))
+     ;;                      (when new-title-el
+     ;;                        (let ((new-title (ps:@ new-title-el text-content)))
+     ;;                          ;; Record if title changed
+     ;;                          (when (or (not old-title-el)
+     ;;                                    (not (= (ps:@ old-title-el text-content) new-title)))
+     ;;                            (record-track-listen-main new-title))
+     ;;                          ;; Check if this track is in user's favorites
+     ;;                          (check-favorite-status)
+     ;;                          ;; Update favorite count display
+     ;;                          (update-favorite-information )))))))))
+     ;;      (catch (lambda (error)
+     ;;               (ps:chain console (log "Could not fetch stream status:" error)))))))
+
+     ;; Update now playing info from API
+     (defun update-now-playing()
        (let ((mount (get-current-mount)))
          (ps:chain
           (fetch (+ "/api/asteroid/partial/now-playing?mount=" mount))
           (then (lambda (response)
                   (let ((content-type (ps:chain response headers (get "content-type"))))
-                    (if (ps:chain content-type (includes "text/html"))
-                        (ps:chain response (text))
-                        (throw (ps:new (-error "Error connecting to stream")))))))
+                    (cond
+                      ((ps:chain content-type (includes "text/html"))
+                       ;; (alert "Received html now-playing")
+                       (ps:chain response (text)))
+                      ((ps:chain content-type (includes "application/json"))
+                       (alert "Received json now-playing")
+                       (ps:chain response (json)))
+                      (t (throw (ps:new (-error "Error connecting to stream"))))))))
           (then (lambda (data)
+                  (when (equal (typeof data) "object")
+                    (return))
                   (let ((now-playing-el (ps:chain document (get-element-by-id "now-playing"))))
                     (when now-playing-el
+                      ;; (alert "Updating now playing")
                       ;; Get current title before updating
                       (let ((old-title-el (ps:chain now-playing-el (query-selector "#current-track-title"))))
                         (setf (ps:@ now-playing-el inner-h-t-m-l) data)
@@ -250,19 +298,34 @@
                               ;; Check if this track is in user's favorites
                               (check-favorite-status)
                               ;; Update favorite count display
-                              (let ((count-el (ps:chain document (get-element-by-id "favorite-count-display")))
-                                    (count-val-el (ps:chain document (get-element-by-id "favorite-count-value"))))
-                                (when (and count-el count-val-el)
-                                  (let ((fav-count (parse-int (or (ps:@ count-val-el value) "0") 10)))
-                                    (if (> fav-count 0)
-                                        (setf (ps:@ count-el text-content)
-                                              (if (= fav-count 1)
-                                                  "1 person loves this track ❤️"
-                                                  (+ fav-count " people love this track ❤️")))
-                                        (setf (ps:@ count-el text-content) "")))))))))))))
+                              (update-favorite-information)
+                              (update-media-session new-title)))))))))
           (catch (lambda (error)
                    (ps:chain console (log "Could not fetch stream status:" error)))))))
-     
+
+     ;; Update favorite count display
+     (defun update-favorite-information ()
+       (let ((count-el (ps:chain document (get-element-by-id "favorite-count-display")))
+             (count-val-el (ps:chain document (get-element-by-id "favorite-count-value"))))
+         (when (and count-el count-val-el)
+           (let ((fav-count (parse-int (or (ps:@ count-val-el value) "0") 10)))
+             (if (> fav-count 0)
+                 (setf (ps:@ count-el text-content)
+                       (if (= fav-count 1)
+                           "1 person loves this track ❤️"
+                           (+ fav-count " people love this track ❤️")))
+                 (setf (ps:@ count-el text-content) ""))))))
+
+     (defun update-media-session (new-title)
+       (let ((media-session (ps:@ navigator media-session)))
+         (when media-session
+           (let* ((track-title (or new-title "Unknown"))
+                  (media-info (ps:create :title track-title
+                                         :artwork (list (ps:create :src  "/asteroid/static/asteroid.png"
+                                                                   :type "image/png"))))
+                  (metadata (ps:new (-media-metadata media-info))))
+             (setf (ps:@ media-session metadata) metadata)))))
+
      ;; Update stream information
      (defun update-stream-information ()
        (let* ((channel-selector (or (ps:chain document (get-element-by-id "stream-channel"))
@@ -635,6 +698,7 @@
 
          ;; Load user's favorites for highlight feature
          (load-favorites-cache)
+         (update-favorite-information )
          
          ;; Update now playing
          (update-now-playing)
