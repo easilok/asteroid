@@ -825,22 +825,25 @@
   "Main front page"
   ;; Register this visitor for geo stats (captures real IP from X-Forwarded-For)
   (register-web-listener)
-  (clip:process-to-string 
-   (load-template "front-page")
-   :title "ASTEROID RADIO"
-   :station-name "ASTEROID RADIO"
-   :status-message "🟢 LIVE - Broadcasting asteroid music for hackers"
-   :listeners "0"
-   :stream-quality "128kbps MP3"
-   :stream-base-url *stream-base-url*
-   :curated-channel-name (get-curated-channel-name)
-   :default-stream-url (format nil "~a/asteroid.aac" *stream-base-url*)
-   :default-stream-encoding "audio/aac"
-   :default-stream-encoding-desc "AAC 96kbps Stereo"
-   :now-playing-artist "The Void"
-   :now-playing-track "Silence"
-   :now-playing-album "Startup Sounds"
-   :now-playing-duration "∞"))
+  (let ((now-playing-stats (icecast-now-playing *stream-base-url*)))
+    (clip:process-to-string
+     (load-template "front-page")
+     :title "ASTEROID RADIO"
+     :station-name "ASTEROID RADIO"
+     :status-message "🟢 LIVE - Broadcasting asteroid music for hackers"
+     :listeners "0"
+     ;; :stats now-playing-stats
+     :connection-error (not now-playing-stats)
+     :stream-quality "128kbps MP3"
+     :stream-base-url *stream-base-url*
+     :curated-channel-name (get-curated-channel-name)
+     :default-stream-url (format nil "~a/asteroid.aac" *stream-base-url*)
+     :default-stream-encoding "audio/aac"
+     :default-stream-encoding-desc "AAC 96kbps Stereo"
+     :now-playing-artist "The Void"
+     :now-playing-track "Silence"
+     :now-playing-album "Startup Sounds"
+     :now-playing-duration "∞")))
 
 ;; Frameset wrapper for persistent player mode
 (define-page frameset-wrapper #@"/frameset" ()
@@ -883,16 +886,6 @@
 ;; BUT exclude ParenScript-compiled JS files
 (define-page static #@"/static/(.*)" (:uri-groups (path))
   (cond
-    ;; Serve ParenScript-compiled auth-ui.js
-    ((string= path "js/auth-ui.js")
-     (setf (content-type *response*) "application/javascript")
-     (handler-case
-         (let ((js (generate-auth-ui-js)))
-           (if js js "// Error: No JavaScript generated"))
-       (error (e)
-         (format t "ERROR generating auth-ui.js: ~a~%" e)
-         (format nil "// Error generating JavaScript: ~a~%" e))))
-    
     ;; Serve ParenScript-compiled front-page.js
     ((string= path "js/front-page.js")
      (setf (content-type *response*) "application/javascript")
